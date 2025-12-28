@@ -8,7 +8,6 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TSRSession:
-    @classmethod
     def __init__(self, sessionId: Optional[str] = None) -> None:
         logger.debug("Creating new TSRSession")
         self.session = requests.Session()
@@ -34,7 +33,6 @@ class TSRSession:
         else:
             raise InvalidCaptchaCode
 
-    @classmethod
     def __tryCaptchaCode(self, code: str) -> bool:
         logger.debug(f"Testing captcha code: {code}")
         r = self.session.post(
@@ -53,7 +51,6 @@ class TSRSession:
         logger.debug(f"Captcha successfully completed: {isDownloadUrl}")
         return isDownloadUrl
 
-    @classmethod
     def __isValidSessionId(self, sessionId: str) -> bool:
         logger.debug(f"Checking if SessionId: {sessionId} is valid")
         self.__getTSRDLTicketCookie()
@@ -65,7 +62,6 @@ class TSRSession:
             r.url == "https://www.thesimsresource.com/downloads/download/itemId/1646133"
         )
 
-    @classmethod
     def __getCaptchaImage(self) -> requests.Request:
         logger.debug("Getting captcha image")
         self.session.get(
@@ -75,7 +71,6 @@ class TSRSession:
             "https://www.thesimsresource.com/downloads/captcha-image"
         )
 
-    @classmethod
     def __saveCaptchaImage(self):
         logger.debug("Saving captcha image")
         captcha_image = self.__getCaptchaImage()
@@ -86,11 +81,9 @@ class TSRSession:
             for chunk in captcha_image.iter_content(1024 * 1024):
                 f.write(chunk)
 
-    @classmethod
     def __openImageInBrowser(self) -> None:
         webbrowser.open_new_tab(f"{CURRENT_DIR}/captcha.png")
 
-    @classmethod
     def __getTSRDLTicketCookie(self) -> str:
         logger.debug("Getting TSRDLTicket cookie")
         response = self.session.get(

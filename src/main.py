@@ -1,187 +1,223 @@
 from __future__ import annotations
+
 from TSRUrl import TSRUrl
 from TSRDownload import TSRDownload
+from TSROrganizer import organize_download
+from TSRSession import TSRSession
 from logger import logger
 from exceptions import *
 from multiprocessing import Pool
-from TSRSession import TSRSession
 from config import CONFIG, CURRENT_DIR
-import clipboard, time, os
+
+import clipboard
+import time
+import os
 
 
-def processTarget(url: TSRUrl, tsrdlsession: str, downloadPath: str):
+def processTarget(
+    url: TSRUrl,
+    tsrdlsession: str,
+    downloadPath: str,
+    creator: str | None,
+):
     try:
         downloader = TSRDownload(url, tsrdlsession)
-        downloader.download(downloadPath)
+        filename = downloader.download(downloadPath)
         logger.info(f"Completed download for: {url.url}")
+        return (url, filename, creator)
     except Exception as e:
-        logger.error(e)
+        logger.error(f"Download failed for {url.url}: {e}")
+        return (url, None, None)
 
-    return url
 
+def callback(result):
+    if not result:
+        return
 
-def callback(url: TSRUrl):
-    logger.debug(f"Removing {url.itemId} from queue")
-    runningDownloads.remove(url.itemId)
+    url, filename, creator = result
+
+    if url.itemId in runningDownloads:
+        runningDownloads.remove(url.itemId)
+
+    if filename:
+        logger.info(f"Successfully downloaded {filename}. Starting organization...")
+        try:
+            organize_download(
+                filename=filename,
+                creator=creator,
+                download_dir=CONFIG["downloadDirectory"],
+            )
+            logger.info(f"Organized {filename} into {creator or 'Unknown'} folder.")
+        except Exception as e:
+            logger.error(f"Failed to organize {filename}: {e}")
+    else:
+        logger.error(
+            f"Download task for {url.url} returned no filename (possibly failed)."
+        )
+
     updateUrlFile()
-    if len(runningDownloads) == 0:
-        logger.info("All downloads have been completed")
+
+    if not runningDownloads and not downloadQueue:
+        logger.info("--- All downloads and queue processed! ---")
+    elif not runningDownloads:
+        logger.info(f"Waiting for next tasks... {len(downloadQueue)} items in queue.")
 
 
 def updateUrlFile():
-    logger.debug(f"Updating URL file")
-    if CONFIG["saveDownloadQueue"]:
-        open(CURRENT_DIR + "/urls.txt", "w").write(
+    if not CONFIG["saveDownloadQueue"]:
+        return
+
+    logger.debug("Updating URL file")
+
+    with open(CURRENT_DIR + "/urls.txt", "w") as f:
+        f.write(
             "\n".join(
-                [
-                    DETAILS_URL + str(id)
-                    for id in [*runningDownloads, *downloadQueue, *vipItemIds]
-                ]
+                DETAILS_URL + str(i)
+                for i in [*runningDownloads, *downloadQueue, *vipItemIds]
             )
         )
 
 
 if __name__ == "__main__":
+
     DETAILS_URL = "https://www.thesimsresource.com/downloads/details/id/"
+
     lastPastedText = ""
+    activeCreator: str | None = None
+
     runningDownloads: list[int] = []
     downloadQueue: list[int] = []
     vipItemIds: list[int] = []
 
-    logger.debug(f'downloadDirectory: {CONFIG["downloadDirectory"]}')
-    logger.debug(f'maxActiveDownloads: {CONFIG["maxActiveDownloads"]}')
-    logger.debug(f'saveDownloadQueue: {CONFIG["saveDownloadQueue"]}')
-    logger.debug(f'debug: {CONFIG["debug"]}')
+    itemCreators: dict[int, str | None] = {}
 
     if not os.path.exists(CONFIG["downloadDirectory"]):
         raise FileNotFoundError(
-            f"The directory: {CONFIG['downloadDirectory']} does not exist! Please make sure the directory exists or the directory is set correctly in the config."
+            f"The directory {CONFIG['downloadDirectory']} does not exist"
         )
 
     session = None
     sessionId = None
+
     if os.path.exists(CURRENT_DIR + "/session"):
         sessionId = open(CURRENT_DIR + "/session", "r").read()
 
     while session is None:
         try:
             session = TSRSession(sessionId)
-            if hasattr(session, "tsrdlsession") and session.tsrdlsession != "":
+            if session.tsrdlsession:
                 open(CURRENT_DIR + "/session", "w").write(session.tsrdlsession)
-                logger.info("Session with captcha successfully created")
+                logger.info("Session created successfully")
         except InvalidCaptchaCode:
-            logger.error(
-                "Invalid captcha code entered, please make sure the code is correct"
-            )
+            logger.error("Invalid captcha code")
             sessionId = None
 
-    if os.path.exists(CURRENT_DIR + "/urls.txt") and CONFIG["saveDownloadQueue"]:
-        for url in open(CURRENT_DIR + "/urls.txt", "r").read().split("\n"):
+    if CONFIG["saveDownloadQueue"] and os.path.exists(CURRENT_DIR + "/urls.txt"):
+        for line in open(CURRENT_DIR + "/urls.txt").read().splitlines():
             try:
-                url = TSRUrl(url)
+                url = TSRUrl(line)
                 if url.isVipExclusive():
-                    logger.info(f"Url is still a VIP exclusive: {url.url}")
                     vipItemIds.append(url.itemId)
-                    continue
-
-                if url.itemId in downloadQueue:
-                    continue
-                downloadQueue.append(url.itemId)
+                else:
+                    downloadQueue.append(url.itemId)
             except InvalidURL:
-                continue
+                pass
 
-    logger.info(
-        "The tool is now ready to be used. Simply copy links from The Sims Resource and the tool will automatically download them for you."
-    )
+    logger.info("Tool ready. Copy TSR links to start downloading.")
 
-    while True:
-        pastedText = clipboard.paste()
-        if lastPastedText == pastedText:
-            for id in downloadQueue:
-                if len(runningDownloads) == CONFIG["maxActiveDownloads"]:
-                    break
+    pool = Pool(processes=CONFIG["maxActiveDownloads"])
 
-                url = TSRUrl(DETAILS_URL + str(id))
-                runningDownloads.append(url.itemId)
-                downloadQueue.remove(url.itemId)
-                logger.info(f"Moved {url.url} from queue to downloading")
-                pool = Pool(1)
-                pool.apply_async(
-                    processTarget,
-                    args=[
-                        url,
-                        session.tsrdlsession,
-                        CONFIG["downloadDirectory"],
-                    ],
-                    callback=callback,
-                )
+    try:
+        while True:
+            pastedText = clipboard.paste()
 
-                if len(downloadQueue) == 0:
-                    logger.info("Queue is now empty")
-        else:
-            lastPastedText = pastedText
-            for line in pastedText.split("\n"):
-                try:
-                    url = TSRUrl(line)
-                except InvalidURL:
-                    continue
+            if pastedText == lastPastedText:
+                for itemId in list(downloadQueue):
+                    if len(runningDownloads) >= CONFIG["maxActiveDownloads"]:
+                        break
 
-                if url.itemId in runningDownloads:
-                    logger.info(f"Url is already being downloaded: {url.url}")
-                    continue
-                if url.itemId in downloadQueue:
-                    logger.info(
-                        f"Url is already in queue (#{downloadQueue.index(url.itemId)}): {url.url}"
+                    url = TSRUrl(DETAILS_URL + str(itemId))
+                    creator = itemCreators.get(itemId)
+
+                    downloadQueue.remove(itemId)
+                    runningDownloads.append(itemId)
+
+                    logger.info(f"Starting queued download: {url.url}")
+
+                    pool.apply_async(
+                        processTarget,
+                        args=[
+                            url,
+                            session.tsrdlsession,
+                            CONFIG["downloadDirectory"],
+                            creator,
+                        ],
+                        callback=callback,
                     )
-                    continue
 
-                if url.itemId in vipItemIds:
-                    logger.info(f"Url is currently a VIP exclusive: {url.url}")
-                    continue
-                elif url.isVipExclusive():
-                    logger.info(
-                        "Url is currently a VIP exclusive, "
-                        + (
-                            "storing url for later: "
-                            if CONFIG["saveDownloadQueue"]
-                            else "unable to download: "
-                        )
-                        + f"{url.url}"
-                    )
-                    vipItemIds.append(url.itemId)
+            else:
+                lastPastedText = pastedText
+                activeCreator = None
+
+                for line in pastedText.splitlines():
+                    try:
+                        url = TSRUrl(line)
+                    except InvalidURL:
+                        continue
+
+                    if activeCreator is None:
+                        activeCreator = url.creator
+
+                    if (
+                        url.itemId in runningDownloads
+                        or url.itemId in downloadQueue
+                        or url.itemId in vipItemIds
+                    ):
+                        continue
+
+                    if url.isVipExclusive():
+                        vipItemIds.append(url.itemId)
+                        updateUrlFile()
+                        continue
+
+                    requirements = TSRUrl.getRequiredItems(url)
+
+                    for req in [url, *requirements]:
+                        if (
+                            req.itemId in runningDownloads
+                            or req.itemId in downloadQueue
+                        ):
+                            continue
+
+                        itemCreators[req.itemId] = activeCreator
+
+                        if len(runningDownloads) >= CONFIG["maxActiveDownloads"]:
+                            downloadQueue.append(req.itemId)
+                            logger.info(f"Queued {req.url}")
+                        else:
+                            runningDownloads.append(req.itemId)
+                            pool.apply_async(
+                                processTarget,
+                                args=[
+                                    req,
+                                    session.tsrdlsession,
+                                    CONFIG["downloadDirectory"],
+                                    activeCreator,
+                                ],
+                                callback=callback,
+                            )
+
                     updateUrlFile()
-                    continue
 
-                requirements = TSRUrl.getRequiredItems(url)
-                logger.info(f"Found valid url in clipboard: {url.url}")
-                if len(requirements) != 0:
-                    logger.info(f"{url.url} has {len(requirements)} requirements")
-                for url in [url, *requirements]:
-                    if url.url in runningDownloads:
-                        logger.info(f"Url is already being downloaded: {url.itemId}")
-                        continue
-                    if url.url in downloadQueue:
-                        logger.info(
-                            f"Url is already in queue (#{downloadQueue.index(url.itemId)}): {url.url}"
-                        )
-                        continue
-                    if len(runningDownloads) == CONFIG["maxActiveDownloads"]:
-                        logger.info(
-                            f"Added url to queue (#{len(downloadQueue)}): {url.url}"
-                        )
-                        downloadQueue.append(url.itemId)
-                    else:
-                        runningDownloads.append(url.itemId)
-                        pool = Pool(1)
-                        pool.apply_async(
-                            processTarget,
-                            args=[
-                                url,
-                                session.tsrdlsession,
-                                CONFIG["downloadDirectory"],
-                            ],
-                            callback=callback,
-                        )
-                updateUrlFile()
+                if runningDownloads or downloadQueue:
+                    logger.info(
+                        f"Status: {len(runningDownloads)} downloading, {len(downloadQueue)} queued"
+                    )
 
-        time.sleep(0.1)
+            time.sleep(0.1)
+
+    except KeyboardInterrupt:
+        logger.info("Shutting down downloader...")
+        pool.close()
+        pool.terminate()
+        pool.join()
