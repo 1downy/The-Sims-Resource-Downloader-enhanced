@@ -58,7 +58,12 @@ def callback(result):
     updateUrlFile()
 
     if not runningDownloads and not downloadQueue:
-        logger.info("--- All downloads and queue processed! ---")
+        logger.info(
+            "--- All downloads and queue processed! ---\n"
+            "Not all required items are hosted on The Sims Resource.\n"
+            "External links have been saved to .txt files inside the creator folders."
+        )
+
     elif not runningDownloads:
         logger.info(f"Waiting for next tasks... {len(downloadQueue)} items in queue.")
 
@@ -76,6 +81,32 @@ def updateUrlFile():
                 for i in [*runningDownloads, *downloadQueue, *vipItemIds]
             )
         )
+
+
+def write_external_requirements(creator: str | None, links: list[str]):
+    if not links:
+        return
+
+    creator = creator or "Unknown"
+    creator_dir = os.path.join(CONFIG["downloadDirectory"], creator)
+    os.makedirs(creator_dir, exist_ok=True)
+
+    path = os.path.join(creator_dir, "EXTERNAL_REQUIRED_CC.txt")
+
+    existing: set[str] = set()
+
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            existing = {line.strip() for line in f if line.strip()}
+
+    new_links = [link for link in links if link not in existing]
+
+    if not new_links:
+        return
+
+    with open(path, "a", encoding="utf-8") as f:
+        for link in new_links:
+            f.write(link + "\n")
 
 
 if __name__ == "__main__":
@@ -181,6 +212,9 @@ if __name__ == "__main__":
                         continue
 
                     requirements = TSRUrl.getRequiredItems(url)
+                    external_requirements = TSRUrl.getExternalRequiredLinks(url)
+
+                    write_external_requirements(activeCreator, external_requirements)
 
                     for req in [url, *requirements]:
                         if (
