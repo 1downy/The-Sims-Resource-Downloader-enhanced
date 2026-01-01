@@ -18,19 +18,12 @@ TEMP_EXTENSIONS = {
 
 
 def organize_download(filename: str, creator: str | None, download_dir: str):
-    """
-    Organize a downloaded file by creator and file type.
-
-    """
 
     if not filename:
         return
-
     ext = os.path.splitext(filename)[1].lower()
-
     if ext in TEMP_EXTENSIONS:
         return
-
     creator = creator or "Unknown"
 
     source_path = os.path.join(download_dir, filename)

@@ -83,7 +83,7 @@ def updateUrlFile():
         )
 
 
-def write_external_requirements(creator: str | None, links: list[str]):
+def write_ext_req(creator: str | None, links: list[str]):
     if not links:
         return
 
@@ -154,7 +154,9 @@ if __name__ == "__main__":
             except InvalidURL:
                 pass
 
-    logger.info("Tool ready. Copy TSR links to start downloading.")
+    logger.info(
+        "The tool is now ready to be used. Simply copy links from The Sims Resource and the tool will automatically download them for you."
+    )
 
     pool = Pool(processes=CONFIG["maxActiveDownloads"])
 
@@ -212,9 +214,9 @@ if __name__ == "__main__":
                         continue
 
                     requirements = TSRUrl.getRequiredItems(url)
-                    external_requirements = TSRUrl.getExternalRequiredLinks(url)
+                    ext_reqs = TSRUrl.getExternalRequiredLinks(url)
 
-                    write_external_requirements(activeCreator, external_requirements)
+                    write_ext_req(activeCreator, ext_reqs)
 
                     for req in [url, *requirements]:
                         if (
