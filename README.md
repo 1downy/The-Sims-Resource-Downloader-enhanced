@@ -9,11 +9,11 @@ I originally built these enhancements for my own use to make downloading and org
 
 ## Features
 
-- **Automatic Organization**: Files are automatically sorted into folders by creator. It also detects "Tray" items and places them in a sub-folder for easy installation.
-- **Required Items Scraper**: Automatically detects and queues required items hosted on TSR (no more manual copying for every piece of a set).
+- **Automatic Organization**: Files are automatically sorted into folders by creator.
+- **Required Items Scraper**: Automatically detects and queues required items hosted on TSR.
 - **External Link Saver**: If an item requires CC from external sites (Patreon, blogs, etc.), the tool scrapes these links and saves them to an `EXTERNAL_REQUIRED_CC.html` file within the creator's folder.
-- **Session & Queue Persistence**: Resumes exactly where you left off. Download progress and queues are saved to `session` and `urls.txt`.
-- **Batch Processing**: Copy multiple links or even a block of text containing links; the tool will extract and queue them all.
+- **Session & Queue Persistence**: Resumes exactly where you left off.
+- **Batch Processing**: Copy multiple links the tool will queue them all.
 - **VIP Detection**: Automatically identifies VIP-exclusive items and logs them separately to avoid errors.
 
 ## Configuration
