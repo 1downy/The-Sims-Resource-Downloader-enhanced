@@ -7,7 +7,7 @@
 
 I originally built these enhancements for my own use to make downloading and organizing CC less of a chore. I figured since it was so helpful for me, someone else might find it useful too. This version builds on the original tool by adding automatic organization and better automation.
 
-## Enhanced Features
+## Features
 
 - **Automatic Organization**: Files are automatically sorted into folders by creator. It also detects "Tray" items and places them in a sub-folder for easy installation.
 - **Required Items Scraper**: Automatically detects and queues required items hosted on TSR (no more manual copying for every piece of a set).
