@@ -1,36 +1,52 @@
-# The Sims Resource Downloader
+# The Sims Resource Downloader (Enhanced)
+
+> [!IMPORTANT]
+> **Credits:** This project is an enhanced fork of the original [The Sims Resource Downloader](https://github.com/Xientraa/The-Sims-Resource-Downloader) created by **Xientraa**. Much respect to the original creator for the foundation of this tool.
 
 [![Code Style: Black](https://img.shields.io/badge/Code_Style-Black-black.svg?style=for-the-badge)](https://github.com/psf/black) [![License: MIT](https://img.shields.io/github/license/Xientraa/The-Sims-Resource-Downloader?label=License&style=for-the-badge)](./LICENSE)
 
-I created this tool because I found it infuriating to download stuff from The Sims Resource, their 15 second wait along with only being able to download a single item at a time and them plastering advertisements everywhere for their VIP service.
+I originally built these enhancements for my own use to make downloading and organizing CC less of a chore. I figured since it was so helpful for me, someone else might find it useful too. This version builds on the original tool by adding automatic organization and better automation.
 
-With this tool you can download multiple items at once, to download items copy the url of the item, the tool monitors your clipboard for valid URLs to download from, and will automatically start downloading the item to the supplied directory in the `config.json` file.
+## Enhanced Features
 
-For a fully in-depth guide of how to setup and use this tool, check out the [Wiki](https://github.com/Xientraa/The-Sims-Resource-Downloader/wiki).
+- **Automatic Organization**: Files are automatically sorted into folders by creator. It also detects "Tray" items and places them in a sub-folder for easy installation.
+- **Required Items Scraper**: Automatically detects and queues required items hosted on TSR (no more manual copying for every piece of a set).
+- **External Link Saver**: If an item requires CC from external sites (Patreon, blogs, etc.), the tool scrapes these links and saves them to an `EXTERNAL_REQUIRED_CC.html` file within the creator's folder.
+- **Session & Queue Persistence**: Resumes exactly where you left off. Download progress and queues are saved to `session` and `urls.txt`.
+- **Batch Processing**: Copy multiple links or even a block of text containing links; the tool will extract and queue them all.
+- **VIP Detection**: Automatically identifies VIP-exclusive items and logs them separately to avoid errors.
 
 ## Configuration
 
-| Option | Description | type |
+| Option | Description | Type |
 | - | - | - |
-| downloadDirectory | Path to a directory where the files will be downloaded to. | string |
+| downloadDirectory | Path where files will be downloaded and organized. | string |
 | maxActiveDownloads | Limits the amount of concurrent downloads. | integer |
-| saveDownloadQueue | Toggles saving & loading of active downloads & queued downloads. | boolean |
+| saveDownloadQueue | Toggles saving & loading of active/queued downloads. | boolean |
 | debug | Toggles debug messages from the logger. | boolean |
 
-## Setting Up Environment
+## Getting Started (Windows)
 
+For a quick setup, you can use the provided batch files:
+
+1. Run `setup.bat` to install dependencies.
+2. Run `start.bat` to launch the downloader.
+
+## Manual Setup
+
+### 1. Setting Up Environment
 ```sh
 python -m venv ./env/
 ```
 
-## Installing Requirements
-
-```pip
+### 2. Installing Requirements
+```sh
 pip install -r requirements.txt
 ```
 
-## Usage
-
+### 3. Usage
 ```sh
-python src/main.py
+python main.py
 ```
+
+Simply copy links from The Sims Resource and the tool will automatically start the download and organization process.
