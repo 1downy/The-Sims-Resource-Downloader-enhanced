@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 ### 3. Usage
 ```sh
-python main.py
+python src/main.py
 ```
 
 Simply copy links from The Sims Resource and the tool will automatically start the download and organization process.
