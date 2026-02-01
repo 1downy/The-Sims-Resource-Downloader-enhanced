@@ -12,6 +12,7 @@ from config import CONFIG, CURRENT_DIR
 import clipboard
 import time
 import os
+import re
 
 
 def processTarget(
@@ -91,22 +92,27 @@ def write_ext_req(creator: str | None, links: list[str]):
     creator_dir = os.path.join(CONFIG["downloadDirectory"], creator)
     os.makedirs(creator_dir, exist_ok=True)
 
-    path = os.path.join(creator_dir, "EXTERNAL_REQUIRED_CC.txt")
+    path = os.path.join(creator_dir, "EXTERNAL_REQUIRED_CC.html")
 
     existing: set[str] = set()
 
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
-            existing = {line.strip() for line in f if line.strip()}
+            for line in f:
+                match = re.search(r'href="([^"]+)"', line)
+                if match:
+                    existing.add(match.group(1))
 
-    new_links = [link for link in links if link not in existing]
+    new_links = [link.strip() for link in links if link.strip() not in existing]
 
     if not new_links:
         return
 
     with open(path, "a", encoding="utf-8") as f:
         for link in new_links:
-            f.write(link + "\n")
+            f.write(
+                f'<a href="{link}" target="_blank" rel="noopener noreferrer">{link}</a><br>\n'
+            )
 
 
 if __name__ == "__main__":
