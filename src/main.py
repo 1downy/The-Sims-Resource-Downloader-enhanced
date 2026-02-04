@@ -9,7 +9,7 @@ from exceptions import *
 from multiprocessing import Pool
 from config import CONFIG, CURRENT_DIR
 
-import clipboard
+import pyperclip as clipboard
 import time
 import os
 import re
@@ -62,7 +62,7 @@ def callback(result):
         logger.info(
             "--- All downloads and queue processed! ---\n"
             "Not all required items are hosted on The Sims Resource.\n"
-            "External links (required items) have been saved to EXTERNAL_REQUIRED_CC.html inside each creator folder."
+            "External links have been saved to .txt files inside the creator folders."
         )
 
     elif not runningDownloads:
@@ -95,6 +95,7 @@ def write_ext_req(creator: str | None, links: list[str]):
     path = os.path.join(creator_dir, "EXTERNAL_REQUIRED_CC.html")
 
     existing: set[str] = set()
+
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -102,17 +103,16 @@ def write_ext_req(creator: str | None, links: list[str]):
                 if match:
                     existing.add(match.group(1))
 
-    with open(path, "a", encoding="utf-8") as f:
-        for combined in links:
-            if "|" in combined:
-                url, link_name = combined.split("|", 1)
-            else:
-                url, link_name = combined, combined
+    new_links = [link.strip() for link in links if link.strip() not in existing]
 
-            if url.strip() not in existing:
-                f.write(
-                    f'<a href="{url}" target="_blank" rel="noopener noreferrer">{link_name}</a><br>\n'
-                )
+    if not new_links:
+        return
+
+    with open(path, "a", encoding="utf-8") as f:
+        for link in new_links:
+            f.write(
+                f'<a href="{link}" target="_blank" rel="noopener noreferrer">{link}</a><br>\n'
+            )
 
 
 if __name__ == "__main__":
