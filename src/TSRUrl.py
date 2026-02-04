@@ -64,9 +64,16 @@ class TSRUrl:
         logger.debug(f"Getting external required links for {url.url}")
         r = requests.get(f"https://www.thesimsresource.com/downloads/{url.itemId}")
         r.raise_for_status()
-        return re.findall(
-            r'<li class="required-download-item"><a href="(https?://[^"]+)"', r.text
-        )
+
+        pattern = r'<li class="required-download-item">.*?<a [^>]*href="(https?://[^"]+)"[^>]*>(.*?)</a>'
+        matches = re.findall(pattern, r.text, re.DOTALL)
+
+        combined_links = []
+        for link, raw_name in matches:
+            clean_name = re.sub(r"<[^>]+>", "", raw_name).strip()
+            combined_links.append(f"{link}|{clean_name}")
+
+        return combined_links
 
     @staticmethod
     def getRequiredItems(url: "TSRUrl") -> list["TSRUrl"]:
